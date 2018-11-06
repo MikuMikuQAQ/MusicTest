@@ -1,21 +1,29 @@
 package com.example.musictest
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Message
+import android.support.v4.app.ActivityCompat
+import android.support.v4.content.ContextCompat
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import com.example.musictest.adapter.MusicListAdapter
 import com.example.musictest.model.MusicList
+import com.example.musictest.presenter.IMainPresenter
+import com.example.musictest.presenter.MainPresenter
+import com.example.musictest.view.MusicNavBottom
 import com.example.scanmusic.ScanLocalMusic
 import kotlinx.android.synthetic.main.activity_main.*
+import org.litepal.LitePal
 import org.litepal.tablemanager.Connector
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(),IMainActivity {
 
     companion object {
         const val ADD_LIST = 0
@@ -24,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private var adapter:MusicListAdapter? = null
     private var musicList:MutableList<MusicList> = ArrayList()
     private var scanLocalMusic:ScanLocalMusic = ScanLocalMusic()
+    private var mainPresenter:IMainPresenter? = null
 
     private var handler:Handler = object:Handler(){
         override fun handleMessage(msg: Message?) {
@@ -48,8 +57,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         //Log.e("123",musicList.get(0).toString())
+        mainPresenter = MainPresenter(this,this)
 
         initView()
+        readList()
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -60,13 +71,21 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when(item?.itemId){
             R.id.add_music -> {
-                Thread(Runnable {
-                    musicList.clear()
-                    musicList = scanLocalMusic.getMusicList(this)
-                    var message = Message()
-                    message.what = ADD_LIST
-                    handler.sendMessage(message)
-                }).start()
+                if (ContextCompat.checkSelfPermission(this,Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
+                    val manifest:Array<String> = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    ActivityCompat.requestPermissions(this,manifest,1)
+                } else {
+                    Thread(Runnable {
+                        musicList.clear()
+                        musicList = scanLocalMusic.getMusicList(this)
+                        if (musicList != null || musicList.size != 0){
+                            mainPresenter!!.saveMusicList(musicList)
+                            var message = Message()
+                            message.what = ADD_LIST
+                            handler.sendMessage(message)
+                        }
+                    }).start()
+                }
             }
             else -> {
 
@@ -81,5 +100,22 @@ class MainActivity : AppCompatActivity() {
         music_list.layoutManager = manager
         adapter = MusicListAdapter(this, musicList)
         music_list.adapter = adapter
+    }
+
+    private fun readList(){
+        Thread(Runnable {
+            musicList = mainPresenter!!.readList()
+            if (adapter != null){
+                var message = Message()
+                message.what = ADD_LIST
+                handler.sendMessage(message)
+            }
+        }).start()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        MusicNavBottom.musicBinder!!.closeMedia()
+        unbindService(MusicNavBottom.serviceConnection)
     }
 }
