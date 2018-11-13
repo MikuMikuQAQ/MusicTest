@@ -8,5 +8,6 @@ data class MusicList(var id:Int,
                      var albumName:String,
                      var musicUri:String,
                      var duration:Int,
-                     var musicSize:Long): LitePalSupport() {
+                     var musicSize:Long,
+                     var albumId:Int): LitePalSupport() {
 }

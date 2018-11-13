@@ -20,6 +20,7 @@
             android:theme="@style/AppTheme">
         <activity
                 android:name=".MainActivity"
+                android:launchMode="singleTask"
                 android:label="音乐播放器">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

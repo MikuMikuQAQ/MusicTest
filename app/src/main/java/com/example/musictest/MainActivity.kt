@@ -1,6 +1,7 @@
 package com.example.musictest
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.support.v7.app.AppCompatActivity
@@ -20,34 +21,64 @@ import com.example.musictest.presenter.MainPresenter
 import com.example.musictest.view.MusicNavBottom
 import com.example.scanmusic.ScanLocalMusic
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.music_nav_bottom.*
 import org.litepal.LitePal
 import org.litepal.tablemanager.Connector
+import java.lang.Thread.interrupted
+import java.lang.Thread.sleep
+import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity(),IMainActivity {
 
+    var musicNavBottom:MusicNavBottom? = null
+
     companion object {
         const val ADD_LIST = 0
+        const val SET_SEEK_BAR = 1
+
+        var status = false
+
+        var handler:Handler = Handler()
+
+        var thread:Thread = Thread(Runnable {
+            while (true){
+                while (status){
+                    var message = Message.obtain()
+                    message.arg1 = MusicNavBottom.musicBinder?.getCurrentPosition()!!
+                    message.arg2 = MusicNavBottom.musicBinder?.getCurrentPosition()!! * 100 / MusicNavBottom.musicBinder?.getDuration()!!
+                    //Log.e("thread",(MusicNavBottom.musicBinder?.getCurrentPosition()!! * 100 / MusicNavBottom.musicBinder?.getDuration()!!).toString())
+                    message.what = SET_SEEK_BAR
+                    handler.sendMessage(message)
+                    sleep(1000)
+                }
+                sleep(500)
+            }
+        })
+
+        fun threadStart(){
+            status = true
+            //Log.e("threadStart()",thread.isAlive.toString())
+            if (thread != null && thread.isAlive){
+
+            }else{
+                thread.start()
+            }
+        }
+
+        fun threadStop(){
+            //Log.e("threadStop()",thread.isAlive.toString())
+            if(status){
+                status = false
+            }
+            //Log.e("threadStop()",thread.isAlive.toString())
+        }
     }
 
     private var adapter:MusicListAdapter? = null
     private var musicList:MutableList<MusicList> = ArrayList()
     private var scanLocalMusic:ScanLocalMusic = ScanLocalMusic()
     private var mainPresenter:IMainPresenter? = null
-
-    private var handler:Handler = object:Handler(){
-        override fun handleMessage(msg: Message?) {
-            super.handleMessage(msg)
-            when(msg?.what){
-                ADD_LIST -> {
-                    adapter?.reList(musicList)
-                    adapter?.notifyDataSetChanged()
-                }
-                else->{
-
-                }
-            }
-        }
-    }
+    private var time = SimpleDateFormat("mm:ss")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,6 +92,26 @@ class MainActivity : AppCompatActivity(),IMainActivity {
 
         initView()
         readList()
+        handler = object : Handler(){
+            override fun handleMessage(msg: Message?) {
+                super.handleMessage(msg)
+                when(msg?.what){
+                    ADD_LIST -> {
+                        adapter?.reList(musicList)
+                        adapter?.notifyDataSetChanged()
+                    }
+                    SET_SEEK_BAR -> {
+                        //Log.e("SET_SEEK_BAR",msg.arg2.toString())
+                        music_use_time.setText(time.format(msg.arg1))
+                        seekBar.setProgress(msg.arg2)
+                        music_time.setText(time.format(MusicNavBottom.musicBinder?.getDuration()))
+                    }
+                    else->{
+
+                    }
+                }
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -96,7 +147,7 @@ class MainActivity : AppCompatActivity(),IMainActivity {
 
     private fun initView(){
         setSupportActionBar(toolbar_main)
-        var manager:LinearLayoutManager = LinearLayoutManager(this)
+        var manager = LinearLayoutManager(this)
         music_list.layoutManager = manager
         adapter = MusicListAdapter(this, musicList)
         music_list.adapter = adapter
@@ -115,7 +166,8 @@ class MainActivity : AppCompatActivity(),IMainActivity {
 
     override fun onDestroy() {
         super.onDestroy()
-        MusicNavBottom.musicBinder!!.closeMedia()
+        MusicNavBottom.musicBinder = null
         unbindService(MusicNavBottom.serviceConnection)
+        threadStop()
     }
 }
