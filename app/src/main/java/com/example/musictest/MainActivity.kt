@@ -12,6 +12,8 @@ import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
+import android.util.Log.e
+import android.util.Log.i
 import android.view.Menu
 import android.view.MenuItem
 import com.example.musictest.adapter.MusicListAdapter
@@ -30,8 +32,6 @@ import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity(),IMainActivity {
 
-    var musicNavBottom:MusicNavBottom? = null
-
     companion object {
         const val ADD_LIST = 0
         const val SET_SEEK_BAR = 1
@@ -45,8 +45,12 @@ class MainActivity : AppCompatActivity(),IMainActivity {
                 while (status){
                     var message = Message.obtain()
                     message.arg1 = MusicNavBottom.musicBinder?.getCurrentPosition()!!
-                    message.arg2 = MusicNavBottom.musicBinder?.getCurrentPosition()!! * 100 / MusicNavBottom.musicBinder?.getDuration()!!
+                    if (MusicNavBottom.musicBinder?.getDuration()!! != 0){
+                        message.arg2 = (MusicNavBottom.musicBinder?.getCurrentPosition()!! * 100 / MusicNavBottom.musicBinder?.getDuration()!!).toInt()
+                    }
                     //Log.e("thread",(MusicNavBottom.musicBinder?.getCurrentPosition()!! * 100 / MusicNavBottom.musicBinder?.getDuration()!!).toString())
+                    //e("thread",MusicNavBottom.musicBinder?.getCurrentPosition()!!.toString())
+                    //i("thread",MusicNavBottom.musicBinder?.getDuration()!!.toString())
                     message.what = SET_SEEK_BAR
                     handler.sendMessage(message)
                     sleep(1000)
@@ -74,6 +78,8 @@ class MainActivity : AppCompatActivity(),IMainActivity {
         }
     }
 
+    var musicNavBottom:MusicNavBottom? = null
+    var listThread:Thread? = null
     private var adapter:MusicListAdapter? = null
     private var musicList:MutableList<MusicList> = ArrayList()
     private var scanLocalMusic:ScanLocalMusic = ScanLocalMusic()
@@ -101,7 +107,7 @@ class MainActivity : AppCompatActivity(),IMainActivity {
                         adapter?.notifyDataSetChanged()
                     }
                     SET_SEEK_BAR -> {
-                        //Log.e("SET_SEEK_BAR",msg.arg2.toString())
+                        //e("SET_SEEK_BAR",msg.arg2.toString())
                         music_use_time.setText(time.format(msg.arg1))
                         seekBar.setProgress(msg.arg2)
                         music_time.setText(time.format(MusicNavBottom.musicBinder?.getDuration()))
@@ -131,6 +137,10 @@ class MainActivity : AppCompatActivity(),IMainActivity {
                         musicList = scanLocalMusic.getMusicList(this)
                         if (musicList != null || musicList.size != 0){
                             mainPresenter!!.saveMusicList(musicList)
+                            MusicNavBottom.musicBinder!!.addMusicLists()
+                            var musicNavBottom = MusicNavBottom(this)
+                            musicNavBottom.musicStatus(MusicNavBottom.MUSIC_PAUSE)
+                            threadStop()
                             var message = Message()
                             message.what = ADD_LIST
                             handler.sendMessage(message)
@@ -154,18 +164,25 @@ class MainActivity : AppCompatActivity(),IMainActivity {
     }
 
     private fun readList(){
-        Thread(Runnable {
+        listThread = Thread(Runnable {
             musicList = mainPresenter!!.readList()
             if (adapter != null){
                 var message = Message()
                 message.what = ADD_LIST
                 handler.sendMessage(message)
             }
-        }).start()
+        })
+        if (!listThread?.isAlive!!){
+            listThread?.start()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        if (!MusicNavBottom.musicBinder?.isMediaPlaying()!!){
+            var intent = Intent(this,MusicService::class.java)
+            stopService(intent)
+        }
         MusicNavBottom.musicBinder = null
         unbindService(MusicNavBottom.serviceConnection)
         threadStop()

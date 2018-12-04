@@ -11,7 +11,10 @@ import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.media.MediaPlayer
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.net.Uri
+import android.os.Build
 import android.os.IBinder
 import android.os.Looper
 import android.os.Message
@@ -24,6 +27,10 @@ import android.view.View
 import android.widget.SeekBar
 import com.example.musictest.MainActivity
 import com.example.musictest.MusicService
+import com.example.musictest.MusicService.MusicBinder.Companion.LIST_CYCLE
+import com.example.musictest.MusicService.MusicBinder.Companion.RANDOM_PLAY
+import com.example.musictest.MusicService.MusicBinder.Companion.SINGLE_CYCLE
+import com.example.musictest.MusicService.MusicBinder.Companion.playBack
 import com.example.musictest.R
 import kotlinx.android.synthetic.main.music_nav_bottom.view.*
 import java.lang.Thread.interrupted
@@ -44,10 +51,13 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.image_play -> {
-                musicStatus(MUSIC_PLAYING)
-                musicBinder?.playMusic()
-                MainActivity.threadStart()
-                showMusicDetails()
+                //e("musiclist",MusicService.musicLists.size.toString())
+                if(MusicService.musicLists.size > 0){
+                    musicStatus(MUSIC_PLAYING)
+                    musicBinder?.playMusic()
+                    MainActivity.threadStart()
+                    showMusicDetails()
+                }
             }
             R.id.image_pause -> {
                 musicStatus(MUSIC_PAUSE)
@@ -55,10 +65,12 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
                 MainActivity.threadStop()
             }
             R.id.big_image_play -> {
-                musicStatus(MUSIC_PLAYING)
-                musicBinder?.playMusic()
-                MainActivity.threadStart()
-                showMusicDetails()
+                if(MusicService.musicLists.size > 0){
+                    musicStatus(MUSIC_PLAYING)
+                    musicBinder?.playMusic()
+                    MainActivity.threadStart()
+                    showMusicDetails()
+                }
             }
             R.id.big_image_pause -> {
                 musicStatus(MUSIC_PAUSE)
@@ -74,32 +86,55 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
                 little_controler.visibility = View.VISIBLE
             }
             R.id.image_next_track -> {
-                MainActivity.threadStop()
-                musicBinder?.nextMusic()
-                musicStatus(MUSIC_PLAYING)
-                MainActivity.threadStart()
-                showMusicDetails()
+                if(MusicService.musicLists.size > 0) {
+                    MainActivity.threadStop()
+                    musicBinder?.nextMusic(true)
+                    musicStatus(MUSIC_PLAYING)
+                    MainActivity.threadStart()
+                    showMusicDetails()
+                }
             }
             R.id.big_image_next_track -> {
-                MainActivity.threadStop()
-                musicBinder?.nextMusic()
-                musicStatus(MUSIC_PLAYING)
-                MainActivity.threadStart()
-                showMusicDetails()
+                if(MusicService.musicLists.size > 0) {
+                    MainActivity.threadStop()
+                    musicBinder?.nextMusic(true)
+                    musicStatus(MUSIC_PLAYING)
+                    MainActivity.threadStart()
+                    showMusicDetails()
+                }
             }
             R.id.image_previous -> {
-                MainActivity.threadStop()
-                musicBinder?.previousMusic()
-                musicStatus(MUSIC_PLAYING)
-                MainActivity.threadStart()
-                showMusicDetails()
+                if(MusicService.musicLists.size > 0) {
+                    MainActivity.threadStop()
+                    musicBinder?.previousMusic()
+                    musicStatus(MUSIC_PLAYING)
+                    MainActivity.threadStart()
+                    showMusicDetails()
+                }
             }
             R.id.big_image_previous -> {
-                MainActivity.threadStop()
-                musicBinder?.previousMusic()
-                musicStatus(MUSIC_PLAYING)
-                MainActivity.threadStart()
-                showMusicDetails()
+                if(MusicService.musicLists.size > 0) {
+                    MainActivity.threadStop()
+                    musicBinder?.previousMusic()
+                    musicStatus(MUSIC_PLAYING)
+                    MainActivity.threadStart()
+                    showMusicDetails()
+                }
+            }
+            R.id.big_list_cycle -> {
+                playBack = SINGLE_CYCLE
+                big_list_cycle.visibility = View.GONE
+                big_single_cycle.visibility = View.VISIBLE
+            }
+            R.id.big_random_play -> {
+                playBack = LIST_CYCLE
+                big_random_play.visibility = View.GONE
+                big_list_cycle.visibility = View.VISIBLE
+            }
+            R.id.big_single_cycle -> {
+                playBack = RANDOM_PLAY
+                big_single_cycle.visibility = View.GONE
+                big_random_play.visibility = View.VISIBLE
             }
             else -> {
 
@@ -110,8 +145,11 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
     private var seekBarChange = object : SeekBar.OnSeekBarChangeListener {
         override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
             if (fromUser) {
-                musicBinder?.moveToPosition(progress * musicBinder?.getDuration()!! / 100)
-                music_use_time.setText(time.format(progress * musicBinder?.getDuration()!! / 100))
+                if (MusicService.musicLists.size > 0) {
+                    //e("progres", (progress * musicBinder?.getDuration()!! / 100).toString())
+                    musicBinder?.moveToPosition(progress * musicBinder?.getDuration()!! / 100)
+                    music_use_time.setText(time.format(progress * musicBinder?.getDuration()!! / 100))
+                }
             }
             if (progress == 0) {
                 showMusicDetails()
@@ -119,15 +157,22 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
         }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            if (musicBinder?.isMediaPlaying()!!) MainActivity.threadStop()
-            musicStatus(MUSIC_PAUSE)
-            musicBinder?.pauseMusic()
+            if (MusicService.musicLists.size > 0) {
+                if (musicBinder?.isMediaPlaying()!!) MainActivity.threadStop()
+                musicStatus(MUSIC_PAUSE)
+                musicBinder?.pauseMusic()
+            }
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
-            musicStatus(MUSIC_PLAYING)
-            musicBinder?.playMusic()
-            MainActivity.threadStart()
+            if (MusicService.musicLists.size > 0) {
+                musicStatus(MUSIC_PLAYING)
+                musicBinder?.playMusic()
+                MainActivity.threadStart()
+                showMusicDetails()
+            } else {
+                //seekBar!!.progress = 0
+            }
         }
 
     }
@@ -136,35 +181,32 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
         var view: View = View.inflate(getContext(), R.layout.music_nav_bottom, this)
         getPermission()
         initView(view)
-        //getBackgroundMedia()
     }
 
     constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs) {
         var view: View = View.inflate(getContext(), R.layout.music_nav_bottom, this)
         getPermission()
         initView(view)
-        //getBackgroundMedia()
     }
 
     constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
         var view: View = View.inflate(getContext(), R.layout.music_nav_bottom, this)
         getPermission()
         initView(view)
-        //getBackgroundMedia()
     }
 
     private fun getPermission() {
         serviceConnection = object : ServiceConnection {
-        override fun onServiceDisconnected(name: ComponentName?) {
+            override fun onServiceDisconnected(name: ComponentName?) {
+
+            }
+
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                musicBinder = service as MusicService.MusicBinder?
+                getBackgroundMedia()
+            }
 
         }
-
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            musicBinder = service as MusicService.MusicBinder?
-            getBackgroundMedia()
-        }
-
-    }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             val manifest: Array<String> = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
             ActivityCompat.requestPermissions(context as MainActivity, manifest, 1)
@@ -186,6 +228,9 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
         big_image_next_track.setOnClickListener(this)
         image_previous.setOnClickListener(this)
         big_image_previous.setOnClickListener(this)
+        big_list_cycle.setOnClickListener(this)
+        big_random_play.setOnClickListener(this)
+        big_single_cycle.setOnClickListener(this)
         seekBar.setOnSeekBarChangeListener(seekBarChange)
     }
 
@@ -230,6 +275,7 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
                 var bitmap = BitmapFactory.decodeFile(cursor.getString(0))
                 var bitmapDrawable = BitmapDrawable(Resources.getSystem(), bitmap)
                 image_music.setImageDrawable(bitmapDrawable)
+                big_image_music.setImageDrawable(bitmapDrawable)
             }
         }
         cursor.close()
