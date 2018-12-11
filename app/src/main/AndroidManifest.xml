@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.FLASHLIGHT"/>
 
     <application
@@ -18,12 +18,13 @@
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher_round"
+            android:screenOrientation="portrait"
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
         <activity
                 android:name=".MainActivity"
-                android:launchMode="singleTask"
-                android:label="音乐播放器">
+                android:label="音乐播放器"
+                android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -36,6 +37,20 @@
                 android:enabled="true"
                 android:exported="true">
         </service>
+
+        <receiver
+                android:name=".receiver.PlayReceiver"
+                android:enabled="true"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.musictest.PLAY_RECEIVER"/>
+            </intent-filter>
+        </receiver>
+        <receiver
+                android:name=".receiver.ListenerReceiver"
+                android:enabled="true"
+                android:exported="true">
+        </receiver>
     </application>
 
 </manifest>

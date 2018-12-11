@@ -2,6 +2,7 @@ package com.example.musictest
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.database.sqlite.SQLiteDatabase
 import android.support.v7.app.AppCompatActivity
@@ -20,6 +21,7 @@ import com.example.musictest.adapter.MusicListAdapter
 import com.example.musictest.model.MusicList
 import com.example.musictest.presenter.IMainPresenter
 import com.example.musictest.presenter.MainPresenter
+import com.example.musictest.receiver.PlayReceiver
 import com.example.musictest.view.MusicNavBottom
 import com.example.scanmusic.ScanLocalMusic
 import kotlinx.android.synthetic.main.activity_main.*
@@ -92,6 +94,8 @@ class MainActivity : AppCompatActivity(),IMainActivity {
         Connector.getDatabase()
 
         setContentView(R.layout.activity_main)
+
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         //Log.e("123",musicList.get(0).toString())
         mainPresenter = MainPresenter(this,this)
@@ -182,9 +186,9 @@ class MainActivity : AppCompatActivity(),IMainActivity {
         if (!MusicNavBottom.musicBinder?.isMediaPlaying()!!){
             var intent = Intent(this,MusicService::class.java)
             stopService(intent)
+            MusicNavBottom.musicBinder = null
+            //unbindService(MusicNavBottom.serviceConnection)
         }
-        MusicNavBottom.musicBinder = null
-        unbindService(MusicNavBottom.serviceConnection)
         threadStop()
     }
 }
