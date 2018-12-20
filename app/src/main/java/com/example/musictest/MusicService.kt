@@ -12,6 +12,8 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import android.support.annotation.RequiresApi
+import android.support.v4.app.NotificationCompat
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -25,7 +27,7 @@ import java.util.*
 class MusicService : Service {
 
     companion object {
-        private var musicBinder = MusicBinder()
+        var musicBinder = MusicService.MusicBinder()
         var mediaPlayer = MediaPlayer()
         var musicLists:MutableList<MusicList> = ArrayList()
         private var num = 0
@@ -34,31 +36,36 @@ class MusicService : Service {
         const val channelId = "musicStyle"
         const val channelName = "音乐通知栏"
 
-        private var musicStatus = object : MediaPlayer.OnCompletionListener{
-            override fun onCompletion(mp: MediaPlayer?) {
-                musicBinder.nextMusic(false)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-                    musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
-                    musicBinder.showMusicControllerBar()
-                }
-            }
-
-        }
-
-        private var perpareListener = object : MediaPlayer.OnPreparedListener{
-            override fun onPrepared(mp: MediaPlayer?) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-                    musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
-                    musicBinder.showMusicControllerBar()
-                }
-            }
-        }
-
         fun musicLoading(i:Int){
             if(MusicService.musicLists.size > 0) {
                 mediaPlayer.setDataSource(musicLists.get(i).musicUri)
             }
             mediaPlayer.prepare()
+        }
+    }
+
+    lateinit var receiver:PlayReceiver
+    lateinit var receiverListener:ListenerReceiver
+
+    private var musicStatus = object : MediaPlayer.OnCompletionListener{
+        override fun onCompletion(mp: MediaPlayer?) {
+            musicBinder.nextMusic(false)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+                musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
+                musicBinder.showMusicControllerBar()
+            }
+        }
+
+    }
+
+    private var perpareListener = object : MediaPlayer.OnPreparedListener{
+        override fun onPrepared(mp: MediaPlayer?) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+                musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
+                musicBinder.showMusicControllerBar()
+            }else{
+                musicBinder.showLowMusicControllerBar()
+            }
         }
     }
 
@@ -73,7 +80,7 @@ class MusicService : Service {
 
     class MusicBinder : Binder(){
 
-        var context:Context? = null
+        lateinit var context:Context
 
         companion object {
             const val level = NotificationManager.IMPORTANCE_DEFAULT
@@ -90,7 +97,9 @@ class MusicService : Service {
             }
             musicLists.clear()
             musicLists = LitePal.findAll(MusicList::class.java)
-            resetMedia()
+            if(MusicService.musicLists.size > 0) {
+                resetMedia()
+            }
         }
 
         fun sendContext(context: Context){
@@ -106,6 +115,8 @@ class MusicService : Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
                 musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
                 musicBinder.showMusicControllerBar()
+            }else{
+                musicBinder.showLowMusicControllerBar()
             }
             //Log.e("playMusic","do not start")
         }
@@ -119,6 +130,8 @@ class MusicService : Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
                 musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
                 musicBinder.showMusicControllerBar()
+            }else{
+                musicBinder.showLowMusicControllerBar()
             }
             //Log.e("pauseMusic","do not pause")
         }
@@ -178,6 +191,8 @@ class MusicService : Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
                 musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
                 musicBinder.showMusicControllerBar()
+            }else{
+                musicBinder.showLowMusicControllerBar()
             }
         }
 
@@ -205,6 +220,8 @@ class MusicService : Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
                 musicBinder.creatChannel(channelId, channelName, MusicBinder.level)
                 musicBinder.showMusicControllerBar()
+            }else{
+                musicBinder.showLowMusicControllerBar()
             }
         }
 
@@ -232,7 +249,7 @@ class MusicService : Service {
             return i
         }
 
-        @TargetApi(Build.VERSION_CODES.O)
+        @RequiresApi(Build.VERSION_CODES.O)
         fun creatChannel(id:String,name:String,level:Int){
             var channel = NotificationChannel(id,name,level)
             channel.setShowBadge(true)
@@ -241,7 +258,38 @@ class MusicService : Service {
             manager.createNotificationChannel(channel)
         }
 
-        @TargetApi(Build.VERSION_CODES.O)
+        fun showLowMusicControllerBar(){
+            var intent = Intent("com.example.musictest.PLAY_RECEIVER")
+            var view = RemoteViews(context?.packageName,R.layout.notification_music_bar)
+            view.setTextViewText(R.id.bar_music,musicLists.get(num).musicName)
+            view.setTextViewText(R.id.bar_song,musicLists.get(num).songName)
+            if(isMediaPlaying()){
+                intent.putExtra("playNum", "1")
+                var pendingIntentPlay = PendingIntent.getBroadcast(context,1,intent,PendingIntent.FLAG_UPDATE_CURRENT)
+                view.setViewVisibility(R.id.bar_play, View.GONE)
+                view.setViewVisibility(R.id.bar_pause,View.VISIBLE)
+                view.setOnClickPendingIntent(R.id.bar_pause,pendingIntentPlay)
+            }else{
+                intent.putExtra("playNum", "0")
+                var pendingIntentPause = PendingIntent.getBroadcast(context,2,intent,PendingIntent.FLAG_UPDATE_CURRENT)
+                view.setViewVisibility(R.id.bar_play, View.VISIBLE)
+                view.setViewVisibility(R.id.bar_pause,View.GONE)
+                view.setOnClickPendingIntent(R.id.bar_play,pendingIntentPause)
+            }
+
+            intent.putExtra("playNum", "2")
+            var pendingIntentNext = PendingIntent.getBroadcast(context,3,intent,PendingIntent.FLAG_UPDATE_CURRENT)
+            view.setOnClickPendingIntent(R.id.bar_next,pendingIntentNext)
+            var manager:NotificationManager = context?.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            var notification:NotificationCompat.Builder = NotificationCompat.Builder(context)
+                    .setAutoCancel(true)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+            var notify = notification.build()
+            notify.contentView = view
+            manager.notify(1, notify)
+        }
+
+        @RequiresApi(Build.VERSION_CODES.O)
         fun showMusicControllerBar(){
 
             var intent = Intent("com.example.musictest.PLAY_RECEIVER")
@@ -284,7 +332,7 @@ class MusicService : Service {
             manager.notify(1, notification.build())
         }
 
-        @TargetApi(Build.VERSION_CODES.O)
+        @RequiresApi(Build.VERSION_CODES.O)
         fun yzMsg(channel: NotificationChannel){
             if (channel.importance == NotificationManager.IMPORTANCE_NONE) {
                 val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
@@ -310,12 +358,12 @@ class MusicService : Service {
 
     override fun onCreate() {
         super.onCreate()
-        var receiver = PlayReceiver(musicBinder.context)
+        receiver = PlayReceiver(musicBinder.context)
         var intentFilter = IntentFilter()
         intentFilter.addAction("com.example.musictest.PLAY_RECEIVER")
         this.registerReceiver(receiver,intentFilter)
 
-        var receiverListener = ListenerReceiver(musicBinder.context)
+        receiverListener = ListenerReceiver(musicBinder.context)
         var intentFilter1 = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
         this.registerReceiver(receiverListener,intentFilter1)
     }
@@ -330,5 +378,7 @@ class MusicService : Service {
             mediaPlayer.stop()
             mediaPlayer.release()
         }
+        unregisterReceiver(receiver)
+        unregisterReceiver(receiverListener)
     }
 }

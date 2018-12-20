@@ -80,12 +80,12 @@ class MainActivity : AppCompatActivity(),IMainActivity {
         }
     }
 
-    var musicNavBottom:MusicNavBottom? = null
-    var listThread:Thread? = null
-    private var adapter:MusicListAdapter? = null
+    lateinit var musicNavBottom:MusicNavBottom
+    lateinit var listThread:Thread
+    private lateinit var adapter:MusicListAdapter
     private var musicList:MutableList<MusicList> = ArrayList()
     private var scanLocalMusic:ScanLocalMusic = ScanLocalMusic()
-    private var mainPresenter:IMainPresenter? = null
+    private lateinit var mainPresenter:IMainPresenter
     private var time = SimpleDateFormat("mm:ss")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -186,7 +186,7 @@ class MainActivity : AppCompatActivity(),IMainActivity {
         if (!MusicNavBottom.musicBinder?.isMediaPlaying()!!){
             var intent = Intent(this,MusicService::class.java)
             stopService(intent)
-            MusicNavBottom.musicBinder = null
+            //MusicNavBottom.musicBinder.closeMedia()
             //unbindService(MusicNavBottom.serviceConnection)
         }
         threadStop()

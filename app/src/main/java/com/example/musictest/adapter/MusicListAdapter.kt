@@ -11,11 +11,11 @@ import kotlinx.android.synthetic.main.item_music.view.*
 
 class MusicListAdapter : RecyclerView.Adapter<MusicListAdapter.ViewHodel> {
 
-    var context:Context? = null
+    var context:Context
     var musicLists:MutableList<MusicList> = ArrayList()
 
     constructor(context: Context?, musicLists: MutableList<MusicList>) : super() {
-        this.context = context
+        this.context = context!!
         this.musicLists = musicLists
     }
 

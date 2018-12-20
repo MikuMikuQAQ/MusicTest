@@ -7,12 +7,12 @@ import org.litepal.LitePal
 
 class MainPresenter : IMainPresenter {
 
-    private var context:Context? = null
-    private var mainActivity:IMainActivity? = null
+    private var context:Context
+    private var mainActivity:IMainActivity
 
     constructor(context: Context?, mainActivity: IMainActivity?) {
-        this.context = context
-        this.mainActivity = mainActivity
+        this.context = context!!
+        this.mainActivity = mainActivity!!
     }
 
     override fun readList(): MutableList<MusicList>{

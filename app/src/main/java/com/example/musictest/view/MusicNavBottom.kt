@@ -42,8 +42,8 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
     private var time = SimpleDateFormat("mm:ss")
 
     companion object {
-        var musicBinder: MusicService.MusicBinder? = null
-        var serviceConnection: ServiceConnection? = null
+        lateinit var musicBinder: MusicService.MusicBinder
+        lateinit var serviceConnection: ServiceConnection
         const val MUSIC_PAUSE: Int = 0
         const val MUSIC_PLAYING: Int = 1
     }
@@ -152,7 +152,9 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
                 }
             }
             if (progress == 0) {
-                showMusicDetails()
+                if (MusicService.musicLists.size > 0) {
+                    showMusicDetails()
+                }
             }
         }
 
@@ -171,7 +173,7 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
                 MainActivity.threadStart()
                 showMusicDetails()
             } else {
-                //seekBar!!.progress = 0
+                seekBar?.progress = 0
             }
         }
 
@@ -202,7 +204,7 @@ class MusicNavBottom : ConstraintLayout, View.OnClickListener {
             }
 
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                musicBinder = service as MusicService.MusicBinder?
+                musicBinder = service as MusicService.MusicBinder
                 getBackgroundMedia()
             }
 

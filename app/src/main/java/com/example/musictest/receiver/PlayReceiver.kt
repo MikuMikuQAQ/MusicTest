@@ -10,12 +10,12 @@ import com.example.musictest.view.MusicNavBottom
 
 class PlayReceiver : BroadcastReceiver {
 
-    var context1:Context? = null
+    var context1:Context
 
     var musicBinder = MusicService.MusicBinder()
 
     constructor(context1: Context?) : super() {
-        this.context1 = context1
+        this.context1 = context1!!
     }
 
     override fun onReceive(context: Context, intent: Intent) {
